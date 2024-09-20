@@ -11,5 +11,6 @@ export const User = Key.extend({
 
 export const Login = Key.extend({
     uname: z.string(),
-    pword: z.string()
+    pword: z.string(),
+    brandcode: z.string()
 })
