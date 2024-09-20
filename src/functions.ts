@@ -20,3 +20,19 @@ export function authenticateToken(req: Request, res: Response, next: () => void)
     }
     else res.sendStatus(500)
 }
+
+/**
+ * Decrypt Provided String Value
+ * @param value string value to decrypt
+ * @param key decryption key, uses .env's decryption key if undefined
+ */
+export function decryptStr(value: string, key?: string){
+    if(process.env.DECRYPTION_KEY){
+        const k = key || process.env.DECRYPTION_KEY
+
+        const bytes = CryptoJS.AES.decrypt(value, k)
+        const decrypted = bytes.toString(CryptoJS.enc.Utf8)
+        
+        return decrypted
+    }
+}

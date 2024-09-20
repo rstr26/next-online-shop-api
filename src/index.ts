@@ -1,14 +1,15 @@
 import express, { Request, Response } from 'express'
-import { User } from './zod/sharedSchema'
 import dotenv from 'dotenv'
+dotenv.config()
+import { User } from './zod/sharedSchema'
+import { CorsOrigins } from './config'
 
 const app = express()
 const port = 3001
-const cors = require('cors')
 const parser = require('body-parser')
-dotenv.config()
+const cors = require('cors')
 
-app.use(cors(), parser())
+app.use(cors({ origin: CorsOrigins(process.env.ENVIRONMENT || 'DEVELOPMENT') }), parser())
 
 app.use('/api/shared', require('./routes/shared'))
 
