@@ -1,6 +1,8 @@
 import { Request, Response } from 'express'
-import { AccessTokenKey } from './config'
+import { AccessTokenKey, SQLConfig } from './config'
 import jwt from 'jsonwebtoken'
+import sql from 'mssql'
+import CryptoJS from 'crypto-js'
 
 export function authenticateToken(req: Request, res: Response, next: () => void){
     const authHeader = req.headers['authorization']
@@ -35,4 +37,24 @@ export function decryptStr(value: string, key?: string){
         
         return decrypted
     }
+}
+
+/**
+ * Execute a query that returns a recordset
+ * @param qry Query to execute
+ */
+export function ExecuteRecordsetQry(qry: string): Promise<{ success: boolean, message: any }>{
+    return new Promise((resolve, reject) => {
+        sql.connect(SQLConfig, (err) => {
+            if(err) reject({ success: false, message: 'Database connection error!' })
+
+            const req = new sql.Request()
+
+            req.query(qry, (err, recset) => {
+                if(err) reject({ success: false, message: err.message })
+                
+                resolve({ success: true, message: recset })
+            })
+        })
+    })
 }
