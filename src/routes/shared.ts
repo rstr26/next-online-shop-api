@@ -1,8 +1,8 @@
 import express, { Request, Response } from 'express'
 import { Login } from '../zod/sharedSchema'
-import { AccessTokenKey, ApiKey, DecryptionKey, UnauthorizedMsg, XValidationMsg } from '../config'
+import { AccessTokenKey, ApiKey, DecryptionKey, SqlDb, UnauthorizedMsg, XValidationMsg } from '../config'
 import jwt from 'jsonwebtoken'
-import { authenticateToken, decryptStr } from '../functions'
+import { authenticateToken, decryptStr, ExecuteRecordsetQry } from '../functions'
 
 const app = express.Router()
 
@@ -14,11 +14,40 @@ app.post('/login', (req: Request, res: Response) => {
         
         if(key === ApiKey){            
             if(AccessTokenKey && DecryptionKey){
-                const user = { name: uname }
-
-                const accessToken = jwt.sign(user, AccessTokenKey)
+                const qry =
+                `
+                SELECT 
+                password,
+                first_name AS fname,
+                last_name AS lname,
+                a.[user_id] AS uid
+                FROM [${SqlDb()}].dbo.users AS a
+                INNER JOIN [${SqlDb()}].dbo.user_info AS b ON a.[user_id] = b.[user_id]
+                WHERE a.username = '${uname}' AND a.brand_code = '${brandcode}'
+                `
                 
-                res.status(200).send({ success: true, accessToken })
+                ExecuteRecordsetQry(qry)
+                .then(({ success, message }) => {
+                    const { recordset } = message
+                    
+                    if(recordset.length > 0){
+                        const { password, fname, lname, uid } = recordset[0]
+                    
+                        const decryptedDb = decryptStr(password)
+                        const decryptedReq = decryptStr(pword)
+
+                        if(decryptedDb === decryptedReq && AccessTokenKey){
+                            const accessToken = jwt.sign({ brandcode, fname, lname, uid }, AccessTokenKey)
+
+                            res.send({ success, message: accessToken })
+                        }
+                        else res.send({ success: false, message: 'Invalid password.' })
+                    }
+                    else res.send({ success: false, message: 'Invalid username.' })
+                })
+                .catch(({ success, message }) => {
+                    res.send({ success, message })
+                })
             }
             else res.status(500).send({ success: false })
         }
@@ -28,8 +57,6 @@ app.post('/login', (req: Request, res: Response) => {
 })
 
 app.get('/validate', authenticateToken, (req: Request, res: Response) => {
-
-    console.log(req.body);
     
     res.send({ status: 'ok', ...req.body })
 })
